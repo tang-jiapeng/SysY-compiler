@@ -1,3 +1,7 @@
+void print() {
+  ;
+}
+
 int main() {
   const int x = 233 * 4;
   int y = 10;

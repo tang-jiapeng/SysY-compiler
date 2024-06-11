@@ -8,7 +8,8 @@ class Printer {
   std::string visit(CompUnitAST& ast);
   std::string visit(DefAST& ast);
   std::string visit(ConstDeclAST& ast);
-  std::string visit(TypeAST& ast);
+  std::string visit(BTypeAST& ast);
+  std::string visit(FuncTypeAST& ast);
   std::string visit(ConstDefAST& ast);
   std::string visit(VarDeclAST& ast);
   std::string visit(VarDefAST& ast);
@@ -16,6 +17,7 @@ class Printer {
   std::string visit(FuncDefAST& ast);
   std::string visit(FuncFParamAST& ast);
   std::string visit(BlockAST& ast);
+  std::string visit(BlockItemAST& ast);
   std::string visit(StmtAST& ast);
   std::string visit(IfAST& ast);
   std::string visit(ExpAST& ast);

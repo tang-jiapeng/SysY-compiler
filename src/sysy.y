@@ -43,10 +43,10 @@ using namespace std;
 %token <int_val> INT_CONST
 
 // 非终结符的类型定义
-%type <ast_val> CompUnit FuncDef Block BlockItem Stmt Decl Type If Def
+%type <ast_val> CompUnit FuncDef Block BlockItem Stmt Decl BType If Def
 %type <ast_val> Exp PrimaryExp UnaryExp AddExp MulExp RelExp EqExp LAndExp LOrExp Number LVal
-%type <ast_val> ConstDecl ConstDef
-%type <ast_val> VarDecl VarDef InitVal FuncFParam FuncRParam
+%type <ast_val> ConstDecl ConstDef 
+%type <ast_val> VarDecl VarDef InitVal FuncFParam FuncRParam FuncType
 %type <ast_vec> BlockArray ConstDefArray VarDefArray DefArray InitValArray
 %type <ast_vec> FuncFParamArray FuncRParamArray IndexArray 
 %type <str_val> UNARYOP MULOP ADDOP
@@ -94,7 +94,7 @@ Def
 Decl : ConstDecl | VarDecl;
 
 ConstDecl 
-  : CONST Type ConstDefArray ';' {
+  : CONST BType ConstDefArray ';' {
     auto btype = std::unique_ptr<BaseAST>($2);
     auto const_defs = std::unique_ptr<std::vector<std::unique_ptr<BaseAST>>>($3);
     $$ = new ConstDeclAST(btype,const_defs);
@@ -146,7 +146,7 @@ IndexArray
   ;
 
 VarDecl 
-  : Type VarDefArray {
+  : BType VarDefArray {
     auto btype = std::unique_ptr<BaseAST>($1);
     auto var_defs = std::unique_ptr<std::vector<std::unique_ptr<BaseAST>>>($2);
     $$ = new VarDeclAST(btype,var_defs); 
@@ -222,7 +222,7 @@ InitValArray
 
 
 FuncDef 
-  : Type IDENT '(' FuncFParamArray ')' Block {
+  : FuncType IDENT '(' FuncFParamArray ')' Block {
     auto func_type = std::unique_ptr<BaseAST>($1);
     auto ident = std::unique_ptr<std::string>($2);
     auto func_fparams = std::unique_ptr<std::vector<std::unique_ptr<BaseAST>>>($4);
@@ -250,17 +250,17 @@ FuncFParamArray
   ;
 
 FuncFParam 
-  : Type IDENT {
+  : BType IDENT {
     auto btype = std::unique_ptr<BaseAST>($1);
     auto ident = std::unique_ptr<std::string>($2);
     $$ = new FuncFParamAST(btype,ident->c_str(),FuncFParamAST::FuncFparamType::Var);
   }
-  | Type IDENT '[' ']' {
+  | BType IDENT '[' ']' {
     auto btype = std::unique_ptr<BaseAST>($1);
     auto ident = std::unique_ptr<std::string>($2);
     $$ = new FuncFParamAST(btype,ident->c_str(),FuncFParamAST::FuncFparamType::Array);
   }
-  | Type IDENT '[' ']' IndexArray {
+  | BType IDENT '[' ']' IndexArray {
     auto btype = std::unique_ptr<BaseAST>($1);
     auto ident = std::unique_ptr<std::string>($2);
     auto indexs = std::unique_ptr<std::vector<std::unique_ptr<BaseAST>>>($5);
@@ -268,12 +268,18 @@ FuncFParam
   }
   ;
 
-Type 
+BType 
   : INT {
-    $$ = new TypeAST("int");
+    $$ = new BTypeAST("int");
+  }
+  ;
+
+FuncType
+  : INT {
+    $$ = new FuncTypeAST("int");
   }
   | VOID {
-    $$ = new TypeAST("void");
+    $$ = new FuncTypeAST("void");
   }
   ;
 
@@ -299,7 +305,19 @@ BlockArray
   }
   ;  
 
-BlockItem : Decl | Stmt;
+BlockItem
+  : ConstDecl {
+    auto const_decl = std::unique_ptr<BaseAST>($1);
+    $$ = new BlockItemAST(const_decl,BlockItemAST::ItemType::ConstDecl);
+  } 
+  | VarDecl {
+    auto var_decl = std::unique_ptr<BaseAST>($1);
+    $$ = new BlockItemAST(var_decl, BlockItemAST::ItemType::VarDecl);
+  }
+  | Stmt {
+    auto stmt = std::unique_ptr<BaseAST>($1);
+    $$ = new BlockItemAST(stmt,BlockItemAST::ItemType::Stmt);
+  };
 
 Stmt 
   : RETURN Exp ';' {
@@ -372,15 +390,15 @@ LVal
 PrimaryExp 
   : '(' Exp ')' {
     auto exp = std::unique_ptr<BaseAST>($2);
-    $$ = new PrimaryExpAST(exp);
+    $$ = new PrimaryExpAST(exp,PrimaryExpAST::PrimaryExpType::Exp);
   }
   | Number {
     auto number = std::unique_ptr<BaseAST>($1);
-    $$ = new PrimaryExpAST(number);
+    $$ = new PrimaryExpAST(number,PrimaryExpAST::PrimaryExpType::Number);
   }
   | LVal {
     auto lval = std::unique_ptr<BaseAST>($1);
-    $$ = new PrimaryExpAST(lval);
+    $$ = new PrimaryExpAST(lval,PrimaryExpAST::PrimaryExpType::LVal);
   }
   ;
 

@@ -9,7 +9,9 @@ void DefAST::accept(Visitor &visitor) { visitor.visit(*this); }
 
 void ConstDeclAST::accept(Visitor &visitor) { visitor.visit(*this); }
 
-void TypeAST::accept(Visitor &visitor) { visitor.visit(*this); }
+void BTypeAST::accept(Visitor &visitor) { visitor.visit(*this); }
+
+void FuncTypeAST::accept(Visitor &visitor) { visitor.visit(*this); }
 
 void ConstDefAST::accept(Visitor &visitor) { visitor.visit(*this); }
 
@@ -24,6 +26,8 @@ void FuncDefAST::accept(Visitor &visitor) { visitor.visit(*this); }
 void FuncFParamAST::accept(Visitor &visitor) { visitor.visit(*this); }
 
 void BlockAST::accept(Visitor &visitor) { visitor.visit(*this); }
+
+void BlockItemAST::accept(Visitor &visitor) { visitor.visit(*this); }
 
 void StmtAST::accept(Visitor &visitor) { visitor.visit(*this); }
 

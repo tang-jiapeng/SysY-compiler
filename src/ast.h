@@ -53,11 +53,20 @@ class ConstDeclAST : public BaseAST {
   void accept(Visitor& visitor) override;
 };
 
-class TypeAST : public BaseAST {
+class BTypeAST : public BaseAST {
  public:
   std::string type;
 
-  TypeAST(const char* type) : type(type) {}
+  BTypeAST(const char* type) : type(type) {}
+
+  void accept(Visitor& visitor) override;
+};
+
+class FuncTypeAST : public BaseAST {
+ public:
+  std::string type;
+
+  FuncTypeAST(const char* type) : type(type) {}
 
   void accept(Visitor& visitor) override;
 };
@@ -195,6 +204,20 @@ class BlockAST : public BaseAST {
   void accept(Visitor& visitor) override;
 };
 
+class BlockItemAST : public BaseAST {
+ public:
+  enum ItemType { ConstDecl, VarDecl, Stmt };
+
+  std::unique_ptr<BaseAST> exp;
+  ItemType type;
+
+  BlockItemAST(std::unique_ptr<BaseAST>& exp, ItemType type)
+      : exp(std::move(exp)) {
+    this->type = type;
+  }
+  void accept(Visitor& visitor) override;
+};
+
 class StmtAST : public BaseAST {
  public:
   enum StmtType {
@@ -259,9 +282,14 @@ class LValAST : public BaseAST {
 
 class PrimaryExpAST : public BaseAST {
  public:
+  enum PrimaryExpType { Exp, LVal, Number };
   std::unique_ptr<BaseAST> exp;
+  PrimaryExpType type;
 
-  PrimaryExpAST(std::unique_ptr<BaseAST>& exp) : exp(std::move(exp)) {}
+  PrimaryExpAST(std::unique_ptr<BaseAST>& exp, PrimaryExpType type)
+      : exp(std::move(exp)) {
+    this->type = type;
+  }
 
   void accept(Visitor& visitor) override;
 };
@@ -421,7 +449,8 @@ class Visitor {
   virtual void visit(CompUnitAST& ast) = 0;
   virtual void visit(DefAST& ast) = 0;
   virtual void visit(ConstDeclAST& ast) = 0;
-  virtual void visit(TypeAST& ast) = 0;
+  virtual void visit(BTypeAST& ast) = 0;
+  virtual void visit(FuncTypeAST& ast) = 0;
   virtual void visit(ConstDefAST& ast) = 0;
   virtual void visit(VarDeclAST& ast) = 0;
   virtual void visit(VarDefAST& ast) = 0;
@@ -429,6 +458,7 @@ class Visitor {
   virtual void visit(FuncDefAST& ast) = 0;
   virtual void visit(FuncFParamAST& ast) = 0;
   virtual void visit(BlockAST& ast) = 0;
+  virtual void visit(BlockItemAST& ast) = 0;
   virtual void visit(StmtAST& ast) = 0;
   virtual void visit(IfAST& ast) = 0;
   virtual void visit(ExpAST& ast) = 0;
