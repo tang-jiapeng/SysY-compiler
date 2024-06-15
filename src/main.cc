@@ -1,29 +1,45 @@
+#include <cassert>
+#include <fstream>
 #include <iostream>
+
+#include <string>
+
 #include "ast.h"
-#include <assert.h>
+#include "printer.h"
 
-
-using namespace std;
-
+extern std::unique_ptr<CompUnitAST> root;
+extern int yyparse();
+extern void initFileName(char *);
 extern FILE *yyin;
-extern int yyparse(unique_ptr<BaseAST> &ast);
+void preprocess(std::string srcFileName);
 
-int main(int argc, const char *argv[]) {
-  assert(argc == 4);
+int main(int argc, char **argv) {
+  assert(argc >= 2);
+  char *filename;
+  bool print_ast = false;
+  if (argc == 2) {
+    filename = argv[1];
+  } else if (argc == 3) {
+    print_ast = true;
+    filename = argv[2];
+  }
+  yyin = fopen(filename, "r");
+  if (yyin == nullptr) {
+    std::cout << "yyin open " << filename << " failed" << std::endl;
+    return -1;
+  }
+  std::string filename_out = strcpy(filename, strrchr(filename, '/') + 1);
 
-  auto input = argv[1];
-  // auto output = argv[3];
+  initFileName(filename);
 
-  yyin = fopen(input, "r");
+  yyparse();
 
-  assert(yyin);
-
-  unique_ptr<BaseAST> ast;
-  auto ret = yyparse(ast);
-  assert(!ret);
-
-  // ast->print(1);
-  cout << endl;
-
+  if (print_ast) {
+    std::ofstream outfile;
+    outfile.open("./example/" + filename_out + ".ast.txt", std::ios::out |
+    std::ios::trunc);
+    Printer printer;
+    outfile << printer.visit(*root) << std::endl;
+  }
   return 0;
 }

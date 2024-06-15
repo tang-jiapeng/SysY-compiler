@@ -2,4 +2,4 @@
 cd build
 cmake .. && make
 cd ..
-build/compiler example/hello.c -o hello.sy
+build/compiler -ast example/hello.c 

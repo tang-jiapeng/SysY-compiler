@@ -1,475 +1,300 @@
 #pragma once
 
-#include <algorithm>
+#include <cstring>
 #include <iostream>
 #include <memory>
 #include <string>
-#include <utility>
 #include <vector>
+
+#include "utils.h"
+
+class BaseAST;
+
+class CompUnitAST;
+class DeclDefAST;
+class DeclAST;
+class DefListAST;
+class DefAST;
+class ArraysAST;
+class InitValListAST;
+class InitValAST;
+class FuncDefAST;
+class FuncFParamListAST;
+class FuncFParamAST;
+class BlockAST;
+class BlockItemListAST;
+class BlockItemAST;
+class StmtAST;
+class ReturnStmtAST;
+class SelectStmtAST;
+class IterationStmtAST;
+class LValAST;
+class PrimaryExpAST;
+class NumberAST;
+class UnaryExpAST;
+class CallAST;
+class FuncCParamListAST;
+class MulExpAST;
+class AddExpAST;
+class RelExpAST;
+class EqExpAST;
+class LAndExpAST;
+class LOrExpAST;
 
 class Visitor;
 
 class BaseAST {
  public:
+  virtual void accept(Visitor &visitor) = 0;
+  BaseAST() = default;
   virtual ~BaseAST() = default;
-
-  virtual void accept(Visitor& visitor) = 0;
 };
 
 class CompUnitAST : public BaseAST {
  public:
-  std::unique_ptr<std::vector<std::unique_ptr<BaseAST>>> defs;
+  std::vector<std::unique_ptr<DeclDefAST>> declDefList;
+  void accept(Visitor &visitor) override;
+};
 
-  CompUnitAST(std::unique_ptr<std::vector<std::unique_ptr<BaseAST>>>& defs)
-      : defs(std::move(defs)) {}
+class DeclDefAST : public BaseAST {
+ public:
+  std::unique_ptr<DeclAST> Decl = nullptr;
+  std::unique_ptr<FuncDefAST> funcDef = nullptr;
+  void accept(Visitor &visitor) override;
+};
 
-  void accept(Visitor& visitor) override;
+class DeclAST : public BaseAST {
+ public:
+  TYPE bType;
+  bool isConst;
+  std::vector<std::unique_ptr<DefAST>> defList;
+  void accept(Visitor &visitor) override;
+};
+
+class DefListAST {
+ public:
+  std::vector<std::unique_ptr<DefAST>> list;
 };
 
 class DefAST : public BaseAST {
  public:
-  enum DefType { FuncDef, ConstDecl, VarDecl };
-
-  std::unique_ptr<BaseAST> exp;
-  DefType type;
-
-  DefAST(std::unique_ptr<BaseAST>& exp, DefType type) : exp(std::move(exp)) {
-    this->type = type;
-  }
-
-  void accept(Visitor& visitor) override;
+  std::unique_ptr<std::string> id;
+  std::vector<std::unique_ptr<AddExpAST>> arrays;
+  std::unique_ptr<InitValAST> initVal;
+  void accept(Visitor &visitor) override;
 };
 
-class ConstDeclAST : public BaseAST {
+class ArraysAST {
  public:
-  std::unique_ptr<BaseAST> btype;
-  std::unique_ptr<std::vector<std::unique_ptr<BaseAST>>> const_defs;
-
-  ConstDeclAST(
-      std::unique_ptr<BaseAST>& btype,
-      std::unique_ptr<std::vector<std::unique_ptr<BaseAST>>>& const_defs)
-      : btype(std::move(btype)), const_defs(std::move(const_defs)) {}
-
-  void accept(Visitor& visitor) override;
-};
-
-class BTypeAST : public BaseAST {
- public:
-  std::string type;
-
-  BTypeAST(const char* type) : type(type) {}
-
-  void accept(Visitor& visitor) override;
-};
-
-class FuncTypeAST : public BaseAST {
- public:
-  std::string type;
-
-  FuncTypeAST(const char* type) : type(type) {}
-
-  void accept(Visitor& visitor) override;
-};
-
-class ConstDefAST : public BaseAST {
- public:
-  std::string ident;
-  std::unique_ptr<std::vector<std::unique_ptr<BaseAST>>> indexs;
-  std::unique_ptr<BaseAST> const_init_val;
-
-  ConstDefAST(const char* ident, std::unique_ptr<BaseAST>& const_init_val)
-      : ident(ident), const_init_val(std::move(const_init_val)) {}
-
-  ConstDefAST(const char* ident,
-              std::unique_ptr<std::vector<std::unique_ptr<BaseAST>>>& indexs,
-              std::unique_ptr<BaseAST>& const_init_val)
-      : ident(ident),
-        indexs(std::move(indexs)),
-        const_init_val(std::move(const_init_val)) {}
-
-  void accept(Visitor& visitor) override;
-};
-
-class VarDeclAST : public BaseAST {
- public:
-  std::unique_ptr<BaseAST> btype;
-  std::unique_ptr<std::vector<std::unique_ptr<BaseAST>>> var_defs;
-
-  VarDeclAST(std::unique_ptr<BaseAST>& btype,
-             std::unique_ptr<std::vector<std::unique_ptr<BaseAST>>>& var_defs)
-      : btype(std::move(btype)), var_defs(std::move(var_defs)) {}
-
-  void accept(Visitor& visitor) override;
-};
-
-class VarDefAST : public BaseAST {
- public:
-  enum VarDefType { Exp, Array };
-
-  std::string ident;
-  std::unique_ptr<std::vector<std::unique_ptr<BaseAST>>> indexs;
-  std::unique_ptr<BaseAST> init_val;
-  VarDefType type;
-
-  VarDefAST(const char* ident, VarDefType type) : ident(ident) {
-    this->type = type;
-  }
-  VarDefAST(const char* ident, std::unique_ptr<BaseAST>& init_val,
-            VarDefType type)
-      : ident(ident), init_val(std::move(init_val)) {
-    this->type = type;
-  }
-
-  VarDefAST(const char* ident,
-            std::unique_ptr<std::vector<std::unique_ptr<BaseAST>>>& indexs,
-            VarDefType type)
-      : ident(ident), indexs(std::move(indexs)) {
-    this->type = type;
-  }
-
-  VarDefAST(const char* ident,
-            std::unique_ptr<std::vector<std::unique_ptr<BaseAST>>>& indexs,
-            std::unique_ptr<BaseAST>& init_val, VarDefType type)
-      : ident(ident), indexs(std::move(indexs)), init_val(std::move(init_val)) {
-    this->type = type;
-  }
-
-  void accept(Visitor& visitor) override;
+  std::vector<std::unique_ptr<AddExpAST>> list;
 };
 
 class InitValAST : public BaseAST {
  public:
-  std::unique_ptr<BaseAST> exp;
-  std::unique_ptr<std::vector<std::unique_ptr<BaseAST>>> init_vals;
+  std::unique_ptr<AddExpAST> exp;
+  std::vector<std::unique_ptr<InitValAST>> initValList;
+  void accept(Visitor &visitor) override;
+};
 
-  InitValAST() = default;
-  InitValAST(std::unique_ptr<BaseAST>& exp) : exp(std::move(exp)) {}
-  InitValAST(std::unique_ptr<std::vector<std::unique_ptr<BaseAST>>>& init_vals)
-      : init_vals(std::move(init_vals)) {}
-
-  void accept(Visitor& visitor) override;
+class InitValListAST {
+ public:
+  std::vector<std::unique_ptr<InitValAST>> list;
 };
 
 class FuncDefAST : public BaseAST {
  public:
-  std::unique_ptr<BaseAST> func_type;
-  std::string ident;
-  std::unique_ptr<std::vector<std::unique_ptr<BaseAST>>> func_fparams;
-  std::unique_ptr<BaseAST> block;
+  TYPE funcType;
+  std::unique_ptr<std::string> id;
+  std::vector<std::unique_ptr<FuncFParamAST>> funcFParamList;
+  std::unique_ptr<BlockAST> block = nullptr;
+  void accept(Visitor &visitor) override;
+};
 
-  FuncDefAST(
-      std::unique_ptr<BaseAST>& func_type, const char* ident,
-      std::unique_ptr<std::vector<std::unique_ptr<BaseAST>>>& func_fparams,
-      std::unique_ptr<BaseAST>& block)
-      : func_type(std::move(func_type)),
-        ident(ident),
-        func_fparams(std::move(func_fparams)),
-        block(std::move(block)) {}
-
-  void accept(Visitor& visitor) override;
+class FuncFParamListAST {
+ public:
+  std::vector<std::unique_ptr<FuncFParamAST>> list;
 };
 
 class FuncFParamAST : public BaseAST {
  public:
-  enum FuncFparamType { Var, Array };
-
-  std::unique_ptr<BaseAST> btype;
-  std::string ident;
-  std::unique_ptr<std::vector<std::unique_ptr<BaseAST>>> indexs;
-  FuncFparamType type;
-
-  FuncFParamAST(std::unique_ptr<BaseAST>& btype, const char* ident,
-                FuncFparamType type)
-      : btype(std::move(btype)), ident(ident) {
-    this->type = type;
-  }
-
-  FuncFParamAST(std::unique_ptr<BaseAST>& btype, const char* ident,
-                std::unique_ptr<std::vector<std::unique_ptr<BaseAST>>>& indexs,
-                FuncFparamType type)
-      : btype(std::move(btype)), ident(ident), indexs(std::move(indexs)) {
-    this->type = type;
-  }
-
-  void accept(Visitor& visitor) override;
+  TYPE bType;
+  std::unique_ptr<std::string> id;
+  bool isArray =
+      false;  // 用于区分是否是数组参数，此时一维数组和多维数组expArrays都是empty
+  std::vector<std::unique_ptr<AddExpAST>> arrays;
+  void accept(Visitor &visitor) override;
 };
 
 class BlockAST : public BaseAST {
  public:
-  std::unique_ptr<std::vector<std::unique_ptr<BaseAST>>> block_items;
+  std::vector<std::unique_ptr<BlockItemAST>> blockItemList;
+  void accept(Visitor &visitor) override;
+};
 
-  BlockAST(std::unique_ptr<std::vector<std::unique_ptr<BaseAST>>>& block_items)
-      : block_items(std::move(block_items)) {}
-
-  void accept(Visitor& visitor) override;
+class BlockItemListAST {
+ public:
+  std::vector<std::unique_ptr<BlockItemAST>> list;
 };
 
 class BlockItemAST : public BaseAST {
  public:
-  enum ItemType { ConstDecl, VarDecl, Stmt };
-
-  std::unique_ptr<BaseAST> exp;
-  ItemType type;
-
-  BlockItemAST(std::unique_ptr<BaseAST>& exp, ItemType type)
-      : exp(std::move(exp)) {
-    this->type = type;
-  }
-  void accept(Visitor& visitor) override;
+  std::unique_ptr<DeclAST> decl = nullptr;
+  std::unique_ptr<StmtAST> stmt = nullptr;
+  void accept(Visitor &visitor) override;
 };
 
 class StmtAST : public BaseAST {
  public:
-  enum StmtType {
-    Exp,
-    Assign,
-    Return,
-    Empty,
-    If,
-    Block,
-    While,
-    Break,
-    Continue
-  };
-
-  std::unique_ptr<BaseAST> exp;
-  std::unique_ptr<BaseAST> stmt;
-  StmtType type;
-
-  StmtAST(StmtType type) { this->type = type; };
-  StmtAST(std::unique_ptr<BaseAST>& exp, StmtType type) : exp(std::move(exp)) {
-    this->type = type;
-  }
-  StmtAST(std::unique_ptr<BaseAST>& exp, std::unique_ptr<BaseAST>& stmt,
-          StmtType type)
-      : exp(std::move(exp)), stmt(std::move(stmt)) {
-    this->type = type;
-  }
-
-  void accept(Visitor& visitor) override;
+  STYPE sType;
+  std::unique_ptr<LValAST> lVal = nullptr;
+  std::unique_ptr<AddExpAST> exp = nullptr;
+  std::unique_ptr<ReturnStmtAST> returnStmt = nullptr;
+  std::unique_ptr<SelectStmtAST> selectStmt = nullptr;
+  std::unique_ptr<IterationStmtAST> iterationStmt = nullptr;
+  std::unique_ptr<BlockAST> block = nullptr;
+  void accept(Visitor &visitor) override;
 };
 
-class IfAST : public BaseAST {
+class ReturnStmtAST : public BaseAST {
  public:
-  std::unique_ptr<BaseAST> exp;
-
-  IfAST(std::unique_ptr<BaseAST>& exp) : exp(std::move(exp)) {}
-
-  void accept(Visitor& visitor) override;
+  std::unique_ptr<AddExpAST> exp = nullptr;
+  void accept(Visitor &visitor) override;
 };
 
-class ExpAST : public BaseAST {
+class SelectStmtAST : public BaseAST {
  public:
-  std::unique_ptr<BaseAST> or_exp;
-
-  ExpAST(std::unique_ptr<BaseAST>& or_exp) : or_exp(std::move(or_exp)) {}
-
-  void accept(Visitor& visitor) override;
+  std::unique_ptr<LOrExpAST> cond;
+  std::unique_ptr<StmtAST> ifStmt, elseStmt;
+  void accept(Visitor &visitor) override;
 };
 
-class LValAST : public BaseAST {
+class IterationStmtAST : public BaseAST {
  public:
-  std::string ident;
-  std::unique_ptr<std::vector<std::unique_ptr<BaseAST>>> indexs;
-
-  LValAST(const char* ident) : ident(ident) {}
-  LValAST(const char* ident,
-          std::unique_ptr<std::vector<std::unique_ptr<BaseAST>>>& indexs)
-      : ident(ident), indexs(std::move(indexs)) {}
-
-  void accept(Visitor& visitor) override;
-};
-
-class PrimaryExpAST : public BaseAST {
- public:
-  enum PrimaryExpType { Exp, LVal, Number };
-  std::unique_ptr<BaseAST> exp;
-  PrimaryExpType type;
-
-  PrimaryExpAST(std::unique_ptr<BaseAST>& exp, PrimaryExpType type)
-      : exp(std::move(exp)) {
-    this->type = type;
-  }
-
-  void accept(Visitor& visitor) override;
-};
-
-class NumberAST : public BaseAST {
- public:
-  int val;
-
-  NumberAST(int val) : val(val) {}
-
-  void accept(Visitor& visitor) override;
-};
-
-class UnaryExpAST : public BaseAST {
- public:
-  enum { Exp, Op, Call } type;
-
-  std::string op;
-  std::unique_ptr<BaseAST> exp;
-  std::unique_ptr<std::vector<std::unique_ptr<BaseAST>>> func_rparams;
-
-  UnaryExpAST(std::unique_ptr<BaseAST>& exp) : exp(std::move(exp)) {
-    type = Exp;
-  }
-  UnaryExpAST(const char* op, std::unique_ptr<BaseAST>& exp)
-      : op(op), exp(std::move(exp)) {
-    type = Op;
-  }
-  UnaryExpAST(
-      const char* op,
-      std::unique_ptr<std::vector<std::unique_ptr<BaseAST>>>& func_rparams)
-      : op(op), func_rparams(std::move(func_rparams)) {
-    type = Call;
-  }
-
-  void accept(Visitor& visitor) override;
-};
-
-class MulExpAST : public BaseAST {
- public:
-  enum { Exp, Op } type;
-  std::unique_ptr<BaseAST> mul_exp;
-  std::string op;
-  std::unique_ptr<BaseAST> unary_exp;
-
-  MulExpAST(std::unique_ptr<BaseAST>& unary_exp)
-      : unary_exp(std::move(unary_exp)) {
-    type = Exp;
-  }
-  MulExpAST(std::unique_ptr<BaseAST>& mul_exp, const char* op,
-            std::unique_ptr<BaseAST>& unary_exp)
-      : mul_exp(std::move(mul_exp)), op(op), unary_exp(std::move(unary_exp)) {
-    type = Op;
-  }
-
-  void accept(Visitor& visitor) override;
+  std::unique_ptr<LOrExpAST> cond;
+  std::unique_ptr<StmtAST> stmt;
+  void accept(Visitor &visitor) override;
 };
 
 class AddExpAST : public BaseAST {
  public:
-  enum { Exp, Op } type;
-  std::unique_ptr<BaseAST> add_exp;
-  std::string op;
-  std::unique_ptr<BaseAST> mul_exp;
+  std::unique_ptr<AddExpAST> addExp;
+  std::unique_ptr<MulExpAST> mulExp;
+  AOP op;
+  void accept(Visitor &visitor) override;
+};
 
-  AddExpAST(std::unique_ptr<BaseAST>& mul_exp) : mul_exp(std::move(mul_exp)) {
-    type = Exp;
-  }
-  AddExpAST(std::unique_ptr<BaseAST>& add_exp, const char* op,
-            std::unique_ptr<BaseAST>& mul_exp)
-      : add_exp(std::move(add_exp)), op(op), mul_exp(std::move(mul_exp)) {
-    type = Op;
-  }
+class MulExpAST : public BaseAST {
+ public:
+  std::unique_ptr<UnaryExpAST> unaryExp;
+  std::unique_ptr<MulExpAST> mulExp;
+  MOP op;
+  void accept(Visitor &visitor) override;
+};
 
-  void accept(Visitor& visitor) override;
+class UnaryExpAST : public BaseAST {
+ public:
+  std::unique_ptr<PrimaryExpAST> primaryExp;
+  std::unique_ptr<CallAST> call;
+  std::unique_ptr<UnaryExpAST> unaryExp;
+  UOP op;
+  void accept(Visitor &visitor) override;
+};
+
+class PrimaryExpAST : public BaseAST {
+ public:
+  std::unique_ptr<AddExpAST> exp;
+  std::unique_ptr<LValAST> lval;
+  std::unique_ptr<NumberAST> number;
+  void accept(Visitor &visitor) override;
+};
+
+class NumberAST : public BaseAST {
+ public:
+  bool isInt;
+  union {
+    int intval;
+    float floatval;
+  };
+  void accept(Visitor &visitor) override;
+};
+
+class LValAST : public BaseAST {
+ public:
+  std::unique_ptr<std::string> id;
+  std::vector<std::unique_ptr<AddExpAST>> arrays;
+  void accept(Visitor &visitor) override;
+};
+
+class CallAST : public BaseAST {
+ public:
+  std::unique_ptr<std::string> id;
+  std::vector<std::unique_ptr<AddExpAST>> funcCParamList;
+  void accept(Visitor &visitor) override;
+};
+
+class FuncCParamListAST {
+ public:
+  std::vector<std::unique_ptr<AddExpAST>> list;
 };
 
 class RelExpAST : public BaseAST {
  public:
-  enum { Exp, Op } type;
-
-  std::unique_ptr<BaseAST> rel_exp;
-  std::string op;
-  std::unique_ptr<BaseAST> add_exp;
-
-  RelExpAST(std::unique_ptr<BaseAST>& add_exp) : add_exp(std::move(add_exp)) {
-    type = Exp;
-  }
-  RelExpAST(std::unique_ptr<BaseAST>& rel_exp, const char* op,
-            std::unique_ptr<BaseAST>& add_exp)
-      : rel_exp(std::move(rel_exp)), op(op), add_exp(std::move(add_exp)) {
-    type = Op;
-  }
-
-  void accept(Visitor& visitor) override;
+  std::unique_ptr<AddExpAST> addExp;
+  std::unique_ptr<RelExpAST> relExp;
+  ROP op;
+  void accept(Visitor &visitor) override;
 };
 
 class EqExpAST : public BaseAST {
  public:
-  enum { Exp, Op } type;
-  std::unique_ptr<BaseAST> eq_exp;
-  std::string op;
-  std::unique_ptr<BaseAST> rel_exp;
-
-  EqExpAST(std::unique_ptr<BaseAST>& rel_exp) : rel_exp(std::move(rel_exp)) {
-    type = Exp;
-  }
-  EqExpAST(std::unique_ptr<BaseAST>& eq_exp, const char* op,
-           std::unique_ptr<BaseAST>& rel_exp)
-      : eq_exp(std::move(eq_exp)), op(op), rel_exp(std::move(rel_exp)) {
-    type = Op;
-  }
-
-  void accept(Visitor& visitor) override;
+  std::unique_ptr<RelExpAST> relExp;
+  std::unique_ptr<EqExpAST> eqExp;
+  EOP op;
+  void accept(Visitor &visitor) override;
 };
 
 class LAndExpAST : public BaseAST {
  public:
-  enum { Exp, Op } type;
-  std::unique_ptr<BaseAST> and_exp;
-  std::string op;
-  std::unique_ptr<BaseAST> eq_exp;
-
-  LAndExpAST(std::unique_ptr<BaseAST>& eq_exp) : eq_exp(std::move(eq_exp)) {
-    type = Exp;
-  }
-  LAndExpAST(std::unique_ptr<BaseAST>& and_exp, const char* op,
-             std::unique_ptr<BaseAST>& eq_exp)
-      : and_exp(std::move(and_exp)), op(op), eq_exp(std::move(eq_exp)) {
-    type = Op;
-  }
-
-  void accept(Visitor& visitor) override;
+  // lAndExp不为空则说明有and符号，or类似
+  std::unique_ptr<EqExpAST> eqExp;
+  std::unique_ptr<LAndExpAST> lAndExp;
+  void accept(Visitor &visitor) override;
 };
 
 class LOrExpAST : public BaseAST {
  public:
-  enum { Exp, Op } type;
-  std::unique_ptr<BaseAST> or_exp;
-  std::string op;
-  std::unique_ptr<BaseAST> and_exp;
-
-  LOrExpAST(std::unique_ptr<BaseAST>& and_exp) : and_exp(std::move(and_exp)) {
-    type = Exp;
-  }
-  LOrExpAST(std::unique_ptr<BaseAST>& or_exp, const char* op,
-            std::unique_ptr<BaseAST>& and_exp)
-      : or_exp(std::move(or_exp)), op(op), and_exp(std::move(and_exp)) {
-    type = Op;
-  }
-
-  void accept(Visitor& visitor) override;
+  std::unique_ptr<LOrExpAST> lOrExp;
+  std::unique_ptr<LAndExpAST> lAndExp;
+  void accept(Visitor &visitor) override;
 };
 
 class Visitor {
  public:
-  virtual void visit(CompUnitAST& ast) = 0;
-  virtual void visit(DefAST& ast) = 0;
-  virtual void visit(ConstDeclAST& ast) = 0;
-  virtual void visit(BTypeAST& ast) = 0;
-  virtual void visit(FuncTypeAST& ast) = 0;
-  virtual void visit(ConstDefAST& ast) = 0;
-  virtual void visit(VarDeclAST& ast) = 0;
-  virtual void visit(VarDefAST& ast) = 0;
-  virtual void visit(InitValAST& ast) = 0;
-  virtual void visit(FuncDefAST& ast) = 0;
-  virtual void visit(FuncFParamAST& ast) = 0;
-  virtual void visit(BlockAST& ast) = 0;
-  virtual void visit(BlockItemAST& ast) = 0;
-  virtual void visit(StmtAST& ast) = 0;
-  virtual void visit(IfAST& ast) = 0;
-  virtual void visit(ExpAST& ast) = 0;
-  virtual void visit(LValAST& ast) = 0;
-  virtual void visit(PrimaryExpAST& ast) = 0;
-  virtual void visit(NumberAST& ast) = 0;
-  virtual void visit(UnaryExpAST& ast) = 0;
-  virtual void visit(MulExpAST& ast) = 0;
-  virtual void visit(AddExpAST& ast) = 0;
-  virtual void visit(RelExpAST& ast) = 0;
-  virtual void visit(EqExpAST& ast) = 0;
-  virtual void visit(LAndExpAST& ast) = 0;
-  virtual void visit(LOrExpAST& ast) = 0;
+  virtual void visit(CompUnitAST &ast) = 0;
+  virtual void visit(DeclDefAST &ast) = 0;
+  virtual void visit(DeclAST &ast) = 0;
+  virtual void visit(DefAST &ast) = 0;
+  virtual void visit(InitValAST &ast) = 0;
+  virtual void visit(FuncDefAST &ast) = 0;
+  virtual void visit(FuncFParamAST &ast) = 0;
+  virtual void visit(BlockAST &ast) = 0;
+  virtual void visit(BlockItemAST &ast) = 0;
+  virtual void visit(StmtAST &ast) = 0;
+  virtual void visit(ReturnStmtAST &ast) = 0;
+  virtual void visit(SelectStmtAST &ast) = 0;
+  virtual void visit(IterationStmtAST &ast) = 0;
+  virtual void visit(AddExpAST &ast) = 0;
+  virtual void visit(MulExpAST &ast) = 0;
+  virtual void visit(UnaryExpAST &ast) = 0;
+  virtual void visit(PrimaryExpAST &ast) = 0;
+  virtual void visit(LValAST &ast) = 0;
+  virtual void visit(NumberAST &ast) = 0;
+  virtual void visit(CallAST &ast) = 0;
+  virtual void visit(RelExpAST &ast) = 0;
+  virtual void visit(EqExpAST &ast) = 0;
+  virtual void visit(LAndExpAST &ast) = 0;
+  virtual void visit(LOrExpAST &ast) = 0;
 };
+
+
+

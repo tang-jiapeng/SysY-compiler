@@ -1,8 +1,5 @@
 #include "printer.h"
-
-#include <string>
-
-#include "ast.h"
+#include "utils.h"
 
 // ref:
 // https://stackoverflow.com/questions/2342162/stdstring-formatting-like-sprintf
@@ -24,128 +21,77 @@ std::string Printer::visit(CompUnitAST &ast) {
   std::string ans = strfmt("%*s", depth, "");
   ans += "CompUnit:\n";
   depth += 2;
-  auto *vec = ast.defs.get();
-  for (auto &i : *vec) {
-    ans += visit(*(dynamic_cast<DefAST *>(i.get())));
+  for (auto &i : ast.declDefList) {
+    ans += visit(*i);
+  }
+  depth -= 2;
+  return ans;
+}
+
+std::string Printer::visit(DeclDefAST &ast) {
+  std::string ans = "";
+  if (ast.Decl != nullptr) {
+    ans += visit(*ast.Decl);
+  } else {
+    ans += visit(*ast.funcDef);
+  }
+  return ans;
+}
+
+std::string Printer::visit(DeclAST &ast) {
+  std::string ans = strfmt("%*s", depth, "");
+  ans += "Decl:\n";
+  depth += 2;
+  if (ast.isConst) {
+    ans += strfmt("%*s", depth, "");
+    ans += "const\n";
+  }
+  ans += strfmt("%*s", depth, "");
+  if (ast.bType == TYPE_INT)
+    ans += "BType:int\n";
+  else
+    ans += "BType:float\n";
+  for (auto &def : ast.defList) {
+    ans += visit(*def);
   }
   depth -= 2;
   return ans;
 }
 
 std::string Printer::visit(DefAST &ast) {
-  std::string ans = "";
-  if (ast.type == DefAST::DefType::FuncDef) {
-    ans += visit(*(dynamic_cast<FuncDefAST *>(ast.exp.get())));
-  } else if (ast.type == DefAST::DefType::ConstDecl) {
-    ans += visit(*(dynamic_cast<ConstDeclAST *>(ast.exp.get())));
-  } else {
-    ans += visit(*(dynamic_cast<VarDeclAST *>(ast.exp.get())));
-  }
-  return ans;
-}
-
-std::string Printer::visit(ConstDeclAST &ast) {
-  std::string ans = strfmt("%*s", depth, "");
-  ans += "ConstDecl:\n";
-  depth += 2;
-  ans += visit(*dynamic_cast<BTypeAST *>(ast.btype.get()));
-  auto *vec = ast.const_defs.get();
-  for (auto &i : *vec) {
-    ans += visit(*(dynamic_cast<ConstDefAST *>(i.get())));
-  }
-  depth -= 2;
-  return ans;
-}
-
-std::string Printer::visit(BTypeAST &ast) {
-  std::string ans = strfmt("%*s", depth, "");
-  if (ast.type == "int") {
-    ans += "BType:int\n";
-  }
-  return ans;
-}
-
-std::string Printer::visit(FuncTypeAST &ast) {
-  std::string ans = strfmt("%*s", depth, "");
-  if (ast.type == "int") {
-    ans += "FuncType:int\n";
-  } else if (ast.type == "void") {
-    ans += "FuncType:void\n";
-  }
-  return ans;
-}
-
-std::string Printer::visit(ConstDefAST &ast) {
-  std::string ans = strfmt("%*s", depth, "");
-  ans += "ConstDef:\n";
-  ans += strfmt("%*s", depth, "");
-  ans += "Ident:" + ast.ident + "\n";
-  auto *vec = ast.indexs.get();
-  if (!vec->empty()) {
-    ans += strfmt("%*s", depth, "");
-    ans += "Arrays:\n";
-    depth += 2;
-    for (auto &i : *vec) {
-      ans += visit(*(dynamic_cast<ExpAST *>(i.get())));
-    }
-    depth -= 2;
-  }
-  if (ast.const_init_val != nullptr) {
-    ans += "Const";
-    ans += visit(*(dynamic_cast<InitValAST *>(ast.const_init_val.get())));
-  }
-  return ans;
-}
-
-std::string Printer::visit(VarDeclAST &ast) {
-  std::string ans = strfmt("%*s", depth, "");
-  ans += "Decl:\n";
-  depth += 2;
-  ans += visit(*dynamic_cast<BTypeAST *>(ast.btype.get()));
-  auto *vec = ast.var_defs.get();
-  for (auto &i : *vec) {
-    ans += visit(*(dynamic_cast<VarDefAST *>(i.get())));
-  }
-  depth -= 2;
-  return ans;
-}
-
-std::string Printer::visit(VarDefAST &ast) {
   std::string ans = strfmt("%*s", depth, "");
   ans += "Def:\n";
+  depth += 2;
   ans += strfmt("%*s", depth, "");
-  ans += "Ident:" + ast.ident + "\n";
-  auto *vec = ast.indexs.get();
-  if (!vec->empty()) {
+  ans += "id:" + *(ast.id) + "\n";
+  if (!ast.arrays.empty()) {
     ans += strfmt("%*s", depth, "");
     ans += "Arrays:\n";
     depth += 2;
-    for (auto &i : *vec) {
-      ans += visit(*(dynamic_cast<ExpAST *>(i.get())));
+    for (auto &i : ast.arrays) {
+      ans += visit(*i);
     }
     depth -= 2;
   }
-  if (ast.init_val != nullptr) {
-    ans += visit(*(dynamic_cast<InitValAST *>(ast.init_val.get())));
-  }
+  if (ast.initVal != nullptr) ans += visit(*ast.initVal);
+  depth -= 2;
   return ans;
 }
 
 std::string Printer::visit(InitValAST &ast) {
   std::string ans = strfmt("%*s", depth, "");
-  ans += "InitVal:";
+  ans += "InitValAST:";
   depth += 2;
-  auto *vec = ast.init_vals.get();
   if (ast.exp != nullptr) {
     ans += "\n";
-    ans += visit(*(dynamic_cast<ExpAST *>(ast.exp.get())));
-  } else if (!vec->empty()) {
+    ans += visit(*ast.exp);
+  } else if (!ast.initValList.empty()) {
     ans += "\n";
     ans += strfmt("%*s", depth, "");
     ans += "InitValList:\n";
     depth += 2;
-    for (auto &i : *vec) {
-      ans += visit(*(dynamic_cast<InitValAST *>(i.get())));
+    for (auto &initVal : ast.initValList) {
+      ans += visit(*initVal);
     }
     depth -= 2;
   } else {
@@ -159,20 +105,25 @@ std::string Printer::visit(FuncDefAST &ast) {
   std::string ans = strfmt("%*s", depth, "");
   ans += "FuncDef:\n";
   depth += 2;
-  ans += visit(*(dynamic_cast<FuncTypeAST *>(ast.func_type.get())));
   ans += strfmt("%*s", depth, "");
-  ans += "Ident:" + ast.ident + "\n";
-  auto *vec = ast.func_fparams.get();
-  if (!vec->empty()) {
+  if (ast.funcType == TYPE_VOID)
+    ans += "funcType:void\n";
+  else if (ast.funcType == TYPE_INT)
+    ans += "funcType:int\n";
+  else
+    ans += "funcType:float\n";
+  ans += strfmt("%*s", depth, "");
+  ans += "id:" + *ast.id + "\n";
+  if (!ast.funcFParamList.empty()) {
     ans += strfmt("%*s", depth, "");
     ans += "FuncFParamList:\n";
     depth += 2;
-    for (auto &i : *vec) {
-      ans += visit(*(dynamic_cast<FuncFParamAST *>(i.get())));
+    for (auto &i : ast.funcFParamList) {
+      ans += visit(*i);
     }
     depth -= 2;
   }
-  ans += visit(*(dynamic_cast<BlockAST *>(ast.block.get())));
+  ans += visit(*ast.block);
   depth -= 2;
   return ans;
 }
@@ -182,20 +133,22 @@ std::string Printer::visit(FuncFParamAST &ast) {
   ans += "FuncFParam:\n";
   depth += 2;
   ans += strfmt("%*s", depth, "");
-  ans += visit(*(dynamic_cast<FuncTypeAST *>(ast.btype.get())));
+  if (ast.bType == TYPE_INT)
+    ans += "BType:int\n";
+  else
+    ans += "BType:float\n";
   ans += strfmt("%*s", depth, "");
-  ans += "Ident:" + ast.ident + "\n";
-  if (ast.type == FuncFParamAST::FuncFparamType::Array) {
+  ans += "id:" + *ast.id + "\n";
+  if (ast.isArray) {
     ans += strfmt("%*s", depth, "");
     ans += "Array:[]\n";
   }
-  auto *vec = ast.indexs.get();
-  if (!vec->empty()) {
+  if (!ast.arrays.empty()) {
     ans += strfmt("%*s", depth, "");
     ans += "Arrays:\n";
     depth += 2;
-    for (auto &i : *vec) {
-      ans += visit(*(dynamic_cast<ExpAST *>(i.get())));
+    for (auto &i : ast.arrays) {
+      ans += visit(*i);
     }
     depth -= 2;
   }
@@ -207,13 +160,12 @@ std::string Printer::visit(BlockAST &ast) {
   std::string ans = strfmt("%*s", depth, "");
   ans += "Block:\n";
   depth += 2;
-  auto *vec = ast.block_items.get();
-  if (!vec->empty()) {
+  if (!ast.blockItemList.empty()) {
     ans += strfmt("%*s", depth, "");
     ans += "BlockItemList:\n";
     depth += 2;
-    for (auto &i : *vec) {
-      ans += visit(*(dynamic_cast<BlockItemAST *>(i.get())));
+    for (auto &i : ast.blockItemList) {
+      ans += visit(*i);
     }
     depth -= 2;
   }
@@ -223,12 +175,10 @@ std::string Printer::visit(BlockAST &ast) {
 
 std::string Printer::visit(BlockItemAST &ast) {
   std::string ans = "";
-  if (ast.type == BlockItemAST::ItemType::ConstDecl) {
-    ans += visit(*(dynamic_cast<ConstDeclAST *>(ast.exp.get())));
-  } else if (ast.type == BlockItemAST::ItemType::VarDecl) {
-    ans += visit(*(dynamic_cast<VarDeclAST *>(ast.exp.get())));
-  } else if (ast.type == BlockItemAST::ItemType::Stmt) {
-    ans += visit(*(dynamic_cast<StmtAST *>(ast.exp.get())));
+  if (ast.decl != nullptr) {
+    ans += visit(*ast.decl);
+  } else {
+    ans += visit(*ast.stmt);
   }
   return ans;
 }
@@ -236,93 +186,145 @@ std::string Printer::visit(BlockItemAST &ast) {
 std::string Printer::visit(StmtAST &ast) {
   std::string ans = strfmt("%*s", depth, "");
   ans += "Stmt:";
-  switch (ast.type) {
-    case StmtAST::StmtType::Empty:
-      ans += "Semicolon\n";
+  switch (ast.sType) {
+    case SEMI:
+      ans += "semicolon\n";
       break;
-    case StmtAST::StmtType::Assign:
+    case ASS:
       ans += "\n";
       depth += 2;
-      ans += visit(*(dynamic_cast<LValAST *>(ast.exp.get())));
-      ans += visit(*(dynamic_cast<ExpAST *>(ast.stmt.get())));
+      ans += visit(*ast.lVal);
+      ans += visit(*ast.exp);
       depth -= 2;
       break;
-    case StmtAST::StmtType::Return:
-      ans += "Return\n";
-      depth += 2;
-      ans += visit(*(dynamic_cast<ExpAST *>(ast.exp.get())));
-      depth -= 2;
-      break;
-    case StmtAST::StmtType::If:
+    case EXP:
       ans += "\n";
       depth += 2;
-      ans += visit(*dynamic_cast<IfAST *>(ast.exp.get()));
-      if (ast.stmt != nullptr) {
-        ans += "Else\n";
-        ans += visit(*(dynamic_cast<StmtAST *>(ast.stmt.get())));
-      }
+      ans += visit(*ast.exp);
       depth -= 2;
       break;
-    case StmtAST::StmtType::Break:
-      ans += "Break\n";
+    case CONT:
+      ans += "continue\n";
       break;
-    case StmtAST::StmtType::Continue:
-      ans += "Continue\n";
+    case BRE:
+      ans += "break\n";
       break;
-    case StmtAST::StmtType::Exp:
+    case RET:
       ans += "\n";
       depth += 2;
-      ans += visit(*(dynamic_cast<ExpAST *>(ast.exp.get())));
+      ans += visit(*ast.returnStmt);
       depth -= 2;
       break;
-    case StmtAST::StmtType::While:
-      ans += "While\n";
-      depth += 2;
-      ans += visit(*(dynamic_cast<ExpAST *>(ast.exp.get())));
-      ans += visit(*(dynamic_cast<StmtAST *>(ast.stmt.get())));
-      depth -= 2;
-      break;
-    case StmtAST::StmtType::Block:
+    case BLK:
       ans += "\n";
       depth += 2;
-      ans += visit(*(dynamic_cast<BlockAST *>(ast.exp.get())));
+      ans += visit(*ast.block);
       depth -= 2;
       break;
-    default:
+    case SELECT:
+      ans += "\n";
+      depth += 2;
+      ans += visit(*ast.selectStmt);
+      depth -= 2;
+      break;
+    case ITER:
+      ans += "\n";
+      depth += 2;
+      ans += visit(*ast.iterationStmt);
+      depth -= 2;
       break;
   }
   return ans;
 }
 
-std::string Printer::visit(IfAST &ast) {
+std::string Printer::visit(ReturnStmtAST &ast) {
   std::string ans = strfmt("%*s", depth, "");
-  ans += "If\n";
+  ans += "return:";
+  if (ast.exp == nullptr)
+    ans += "void\n";
+  else {
+    ans += "\n";
+    depth += 2;
+    ans += visit(*ast.exp);
+    depth -= 2;
+  }
+  return ans;
+}
+
+std::string Printer::visit(SelectStmtAST &ast) {
+  std::string ans = strfmt("%*s", depth, "");
+  ans += "SelectStmt:\n";
   depth += 2;
-  ans += visit(*(dynamic_cast<ExpAST *>(ast.exp.get())));
+  ans += visit(*ast.cond);
+  ans += visit(*ast.ifStmt);
+  if (ast.elseStmt != nullptr) ans += visit(*ast.elseStmt);
   depth -= 2;
   return ans;
 }
 
-std::string Printer::visit(ExpAST &ast) {
-  std::string ans = "";
-  ans += visit(*(dynamic_cast<LOrExpAST *>(ast.or_exp.get())));
+std::string Printer::visit(IterationStmtAST &ast) {
+  std::string ans = strfmt("%*s", depth, "");
+  ans += "IterationStmt:\n";
+  depth += 2;
+  ans += visit(*ast.cond);
+  ans += visit(*ast.stmt);
+  depth -= 2;
   return ans;
 }
 
-std::string Printer::visit(LValAST &ast) {
+std::string Printer::visit(AddExpAST &ast) {
   std::string ans = strfmt("%*s", depth, "");
-  ans += "LVal:\n";
+  ans += "AddExp:\n";
   depth += 2;
-  ans += strfmt("%*s", depth, "");
-  ans += "Ident:" + ast.ident + "\n";
-  auto *vec = ast.indexs.get();
-  if (!vec->empty()) {
-    ans += "Arrays:\n";
-    depth += 2;
-    for (auto &i : *vec) {
-      ans += visit(*(dynamic_cast<ExpAST *>(i.get())));
-    }
-    depth -= 2;
+  if (ast.addExp != nullptr) {
+    ans += visit(*ast.addExp);
+    ans += strfmt("%*s", depth, "");
+    ans += "AOP:";
+    if (ast.op == AOP_ADD)
+      ans += "+\n";
+    else
+      ans += "-\n";
+  }
+  ans += visit(*ast.mulExp);
+  depth -= 2;
+  return ans;
+}
+
+std::string Printer::visit(MulExpAST &ast) {
+  std::string ans = strfmt("%*s", depth, "");
+  ans += "MulExp:\n";
+  depth += 2;
+  if (ast.mulExp != nullptr) {
+    ans += visit(*ast.mulExp);
+    ans += strfmt("%*s", depth, "");
+    ans += "MOP:";
+    if (ast.op == MOP_MUL)
+      ans += "*\n";
+    else if (ast.op == MOP_DIV)
+      ans += "/\n";
+    else
+      ans += "%\n";
+  }
+  ans += visit(*ast.unaryExp);
+  depth -= 2;
+  return ans;
+}
+
+std::string Printer::visit(UnaryExpAST &ast) {
+  std::string ans = strfmt("%*s", depth, "");
+  ans += "UnaryExp:\n";
+  depth += 2;
+  if (ast.primaryExp != nullptr) {
+    ans += visit(*ast.primaryExp);
+  } else if (ast.call != nullptr) {
+    ans += visit(*ast.call);
+  } else {
+    ans += strfmt("%*s", depth, "");
+    ans += "UnaryOp:";
+    if (ast.op == UOP_ADD) ans += "+\n";
+    if (ast.op == UOP_MINUS) ans += "-\n";
+    if (ast.op == UOP_NOT) ans += "!\n";
+    ans += visit(*ast.unaryExp);
   }
   depth -= 2;
   return ans;
@@ -332,52 +334,29 @@ std::string Printer::visit(PrimaryExpAST &ast) {
   std::string ans = strfmt("%*s", depth, "");
   ans += "PrimaryExp:\n";
   depth += 2;
-  if (ast.type == PrimaryExpAST::PrimaryExpType::Exp) {
-    ans += visit(*(dynamic_cast<ExpAST *>(ast.exp.get())));
-  } else if (ast.type == PrimaryExpAST::PrimaryExpType::Number) {
-    ans += visit(*(dynamic_cast<NumberAST *>(ast.exp.get())));
-  } else if (ast.type == PrimaryExpAST::PrimaryExpType::LVal) {
-    ans += visit(*(dynamic_cast<LValAST *>(ast.exp.get())));
+  if (ast.exp != nullptr) {
+    ans += visit(*ast.exp);
+  } else if (ast.lval != nullptr) {
+    ans += visit(*ast.lval);
+  } else {
+    ans += visit(*ast.number);
   }
   depth -= 2;
   return ans;
 }
 
-std::string Printer::visit(NumberAST &ast) {
+std::string Printer::visit(CallAST &ast) {
   std::string ans = strfmt("%*s", depth, "");
-  ans += "Number:";
-  ans += " IntConst: " + std::to_string(ast.val) + "\n";
-  return ans;
-}
-
-std::string Printer::visit(UnaryExpAST &ast) {
-  std::string ans = strfmt("%*s", depth, "");
-  ans += "UnaryExp:\n";
+  ans += "Call:\n";
   depth += 2;
-  if (ast.type == UnaryExpAST::Exp) {
-    ans += visit(*(dynamic_cast<PrimaryExpAST *>(ast.exp.get())));
-  } else if (ast.type == UnaryExpAST::Op) {
+  ans += strfmt("%*s", depth, "");
+  ans += "id:" + (*ast.id) + "\n";
+  if (!ast.funcCParamList.empty()) {
     ans += strfmt("%*s", depth, "");
-    ans += "UnaryOp:";
-    if (ast.op == "+") ans += "+\n";
-    if (ast.op == "-") ans += "-\n";
-    if (ast.op == "!") ans += "!\n";
-    ans += visit(*dynamic_cast<UnaryExpAST *>(ast.exp.get()));
-  } else if (ast.type == UnaryExpAST::Call) {
-    ans += strfmt("%*s", depth, "");
-    ans += "Call:\n";
+    ans += "FuncCParamList:" + std::to_string(ast.funcCParamList.size()) + "\n";
     depth += 2;
-    ans += strfmt("%*s", depth, "");
-    ans += "Ident:" + ast.op + "\n";
-    auto *vec = ast.func_rparams.get();
-    if (!vec->empty()) {
-      ans += strfmt("%*s", depth, "");
-      ans += "FuncRParamList:" + std::to_string(vec->size()) + "\n";
-      depth += 2;
-      for (auto &i : *vec) {
-        ans += visit(*(dynamic_cast<ExpAST *>(i.get())));
-      }
-      depth -= 2;
+    for (auto &i : ast.funcCParamList) {
+      ans += visit(*i);
     }
     depth -= 2;
   }
@@ -385,40 +364,31 @@ std::string Printer::visit(UnaryExpAST &ast) {
   return ans;
 }
 
-std::string Printer::visit(MulExpAST &ast) {
+std::string Printer::visit(LValAST &ast) {
   std::string ans = strfmt("%*s", depth, "");
-  ans += "MulExp:\n";
+  ans += "LVal:\n";
   depth += 2;
-  if (ast.type == MulExpAST::Exp) {
-    ans += visit(*(dynamic_cast<UnaryExpAST *>(ast.unary_exp.get())));
-  } else if (ast.type == MulExpAST::Op) {
-    ans += visit(*(dynamic_cast<MulExpAST *>(ast.mul_exp.get())));
-    ans += strfmt("%*s", depth, "");
-    ans += "MulOP:";
-    if (ast.op == "*") ans += "*\n";
-    if (ast.op == "/") ans += "/\n";
-    if (ast.op == "%") ans += "%\n";
-    ans += visit(*dynamic_cast<UnaryExpAST *>(ast.unary_exp.get()));
+  ans += strfmt("%*s", depth, "");
+  ans += "id:" + (*ast.id) + "\n";
+  if (!ast.arrays.empty()) {
+    ans += "Arrays:\n";
+    depth += 2;
+    for (auto &i : ast.arrays) {
+      ans += visit(*i);
+    }
+    depth -= 2;
   }
   depth -= 2;
   return ans;
 }
 
-std::string Printer::visit(AddExpAST &ast) {
+std::string Printer::visit(NumberAST &ast) {
   std::string ans = strfmt("%*s", depth, "");
-  ans += "AddExp:\n";
-  depth += 2;
-  if (ast.type == AddExpAST::Exp) {
-    ans += visit(*(dynamic_cast<MulExpAST *>(ast.mul_exp.get())));
-  } else if (ast.type == AddExpAST::Op) {
-    ans += visit(*(dynamic_cast<AddExpAST *>(ast.add_exp.get())));
-    ans += strfmt("%*s", depth, "");
-    ans += "AddOP:";
-    if (ast.op == "+") ans += "+\n";
-    if (ast.op == "-") ans += "-\n";
-    ans += visit(*(dynamic_cast<MulExpAST *>(ast.mul_exp.get())));
-  }
-  depth -= 2;
+  ans += "number:";
+  if (ast.isInt)
+    ans += std::to_string(ast.intval) + "\n";
+  else
+    ans += std::to_string(ast.floatval) + "\n";
   return ans;
 }
 
@@ -426,18 +396,20 @@ std::string Printer::visit(RelExpAST &ast) {
   std::string ans = strfmt("%*s", depth, "");
   ans += "RelExp:\n";
   depth += 2;
-  if (ast.type == RelExpAST::Exp) {
-    ans += visit(*(dynamic_cast<AddExpAST *>(ast.add_exp.get())));
-  } else if (ast.type == RelExpAST::Op) {
-    ans += visit(*(dynamic_cast<RelExpAST *>(ast.rel_exp.get())));
+  if (ast.relExp != nullptr) {
+    ans += visit(*ast.relExp);
     ans += strfmt("%*s", depth, "");
     ans += "RelOP:";
-    if (ast.op == ">=") ans += ">=\n";
-    if (ast.op == "<=") ans += "<=\n";
-    if (ast.op == ">") ans += ">\n";
-    if (ast.op == "<") ans += "<\n";
-    ans += visit(*(dynamic_cast<AddExpAST *>(ast.add_exp.get())));
+    if (ast.op == ROP_GTE)
+      ans += ">=\n";
+    else if (ast.op == ROP_LTE)
+      ans += "<=\n";
+    else if (ast.op == ROP_GT)
+      ans += ">\n";
+    else if (ast.op == ROP_LT)
+      ans += "<\n";
   }
+  ans += visit(*ast.addExp);
   depth -= 2;
   return ans;
 }
@@ -446,16 +418,16 @@ std::string Printer::visit(EqExpAST &ast) {
   std::string ans = strfmt("%*s", depth, "");
   ans += "EqExp:\n";
   depth += 2;
-  if (ast.type == EqExpAST::Exp) {
-    ans += visit(*(dynamic_cast<RelExpAST *>(ast.rel_exp.get())));
-  } else if (ast.type == EqExpAST::Op) {
-    ans += visit(*(dynamic_cast<EqExpAST *>(ast.eq_exp.get())));
+  if (ast.eqExp != nullptr) {
+    ans += visit(*ast.eqExp);
     ans += strfmt("%*s", depth, "");
     ans += "EqOP:";
-    if (ast.op == "==") ans += "==\n";
-    if (ast.op == "!=") ans += "!=\n";
-    ans += visit(*(dynamic_cast<RelExpAST *>(ast.rel_exp.get())));
+    if (ast.op == EOP_EQ)
+      ans += "==\n";
+    else
+      ans += "!=\n";
   }
+  ans += visit(*ast.relExp);
   depth -= 2;
   return ans;
 }
@@ -464,14 +436,12 @@ std::string Printer::visit(LAndExpAST &ast) {
   std::string ans = strfmt("%*s", depth, "");
   ans += "LAndExp:\n";
   depth += 2;
-  if (ast.type == LAndExpAST::Exp) {
-    ans += visit(*(dynamic_cast<EqExpAST *>(ast.eq_exp.get())));
-  } else if (ast.type == LAndExpAST::Op) {
-    ans += visit(*(dynamic_cast<LAndExpAST *>(ast.and_exp.get())));
+  if (ast.lAndExp != nullptr) {
+    ans += visit(*ast.lAndExp);
     ans += strfmt("%*s", depth, "");
     ans += "AND_OP:&&";
-    ans += visit(*(dynamic_cast<EqExpAST *>(ast.eq_exp.get())));
   }
+  ans += visit(*ast.eqExp);
   depth -= 2;
   return ans;
 }
@@ -480,14 +450,12 @@ std::string Printer::visit(LOrExpAST &ast) {
   std::string ans = strfmt("%*s", depth, "");
   ans += "LOrExp:\n";
   depth += 2;
-  if (ast.type == LOrExpAST::Exp) {
-    ans += visit(*(dynamic_cast<LAndExpAST *>(ast.and_exp.get())));
-  } else if (ast.type == LOrExpAST::Op) {
-    ans += visit(*(dynamic_cast<LOrExpAST *>(ast.or_exp.get())));
+  if (ast.lOrExp != nullptr) {
+    ans += visit(*ast.lOrExp);
     ans += strfmt("%*s", depth, "");
     ans += "OR_OP:||";
-    ans += visit(*(dynamic_cast<LAndExpAST *>(ast.and_exp.get())));
   }
+  ans += visit(*ast.lAndExp);
   depth -= 2;
   return ans;
 }
